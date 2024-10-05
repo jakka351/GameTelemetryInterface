@@ -81,15 +81,39 @@ print('                                            :,,,,,,+==+,:..:==.:,,~:~~~~~
 print('                                              ,,,,,,,++.,,.,,,,=:,,~:::~:::,,,,,,,,,::~~~=====~====~.......?I=I.....,:~    ')
 print(' Game Telemetry Interface by Jakka351           ::,,,,,,:~::,~+I+,..~::::::,,,,,,,,,,,,,,,,,~==~~~.........+.......,:,,    ')        
 
+# data byte variables
+engineRevolutionsPerMinute = 0
+vehicleKilometresPerHour = 0
+cylinderHeadTemperature = 0
+odometerCount = 0
+engineSpeedRateOfChange1 = 0
+engineSpeedRateOfChange2 = 0
+throttlePositionManifold = 0
+throttlePositionRateOfChange = 0
+#can ID variables
+powertrainControlModule0 = 0x207 
+powertrainControlModule01 = 0x44D 
+torqueReductionRequest = 0x120
+engineSpeedRateOfChange = 0x12D
+antiLockBrakeSystem = 0x210
+transmissionControlModule = 0x230
+frontDisplayInterfaceModule = 0x307
+restraintsControlModule = 0x340
+restraintsControlModule2 = 0x350
+hvacIntegratedModule = 0x353
+bodyElectronicModule = 0x403
+powertrainControlModule = 0x425
+powertrainCOntrolModule2 = 0x427
+instrumentCluster = 0x437
+powertrainControlModule3 = 0x453
+powertrainControlModule4 = 0x454
+powertrainControlModule5 = 0x4C0
+powertrainControlModule6 = 0x623
+powertrainControlModule7 = 0x640
+powertrainControlModule8 = 0x650
+IC_DiagSig_Rx = 0x720
+IC_DiagSig_Tx = 0x728
 
-ENGINE_RPM = 0
-VEHICLE_SPEED = 0
-COOLANT_TEMPERATURE = 0
-ODOMETER_COUNT = 0
-# Placeholder CAN IDs for RPM and speed
-TACHOMETER_CAN_ID = 0x100  # Placeholder CAN ID for Tachometer
-SPEEDOMETER_CAN_ID = 0x101  # Placeholder CAN ID for 
-COOLANT_TEMP_CAN_ID = 0x102 
 # UDP settings (for example, Project CARS telemetry uses UDP port 5606)
 UDP_IP = "0.0.0.0"
 UDP_PORT = 5606
@@ -146,42 +170,79 @@ def cleanline():                      # cleans the last output line from the con
 def cleanscreen():                    # cleans the whole console screen
     os.system("clear")
 
+# CAN messages to keep cluster happy
+def allIsWellOnTheCanBus():
+    msg120 = can.Message(arbitration_id=torqueReductionRequest, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
+    bus.send(msg120)
+    msg12D = can.Message(arbitration_id=engineSpeedRateOfChange, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
+    bus.send(msg12D)
+    msg210 = can.Message(arbitration_id=antiLockBrakeSystem, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
+    bus.send(msg210)
+    msg340 = can.Message(arbitration_id=restraintsControlModule, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
+    bus.send(msg340)
+    msg350 = can.Message(arbitration_id=restraintsControlModule2, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
+    bus.send(msg350)
+    msg353 = can.Message(arbitration_id=hvacIntegratedModule, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
+    bus.send(msg353)
+    msg403 = can.Message(arbitration_id=bodyElectronicModule, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
+    bus.send(msg403)
+    msg425 = can.Message(arbitration_id=powertrainControlModule, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
+    bus.send(msg425)
+    msg427 = can.Message(arbitration_id=powertrainControlModule2, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
+    bus.send(msg427)
+    msg437 = can.Message(arbitration_id=instrumentCluster, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
+    bus.send(msg437)
+    msg453 = can.Message(arbitration_id=powertrainControlModule3, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
+    bus.send(msg453)
+    msg454 = can.Message(arbitration_id=powertrainControlModule4, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
+    bus.send(msg454)
+    msg4C0 = can.Message(arbitration_id=powertrainControlModule5, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
+    bus.send(msg4C0)
+    msg623 = can.Message(arbitration_id=powertrainControlModule6, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
+    bus.send(msg623)
+    msg640 = can.Message(arbitration_id=powertrainControlModule7, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
+    bus.send(msg640)
+    msg650 = can.Message(arbitration_id=powertrainControlModule8, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
+    bus.send(msg640)
+
 def send_can_message(can_id, data):
     data = data + [0] * (8 - len(data))
     message = can.Message(arbitration_id=can_id, data=data, is_extended_id=False)
     try:
-        bus1.send(message)
+        bus.send(message)
         print(f"Message sent on {can_interface}: ID={hex(can_id)} Data={data}")
     except can.CanError:
         print(f"Failed to send message on {can_interface}")
 
-def control_tachometer(rpm):
-    data = [rpm // 256, rpm % 256]  # High byte, low byte for RPM
-    send_can_message(TACHOMETER_CAN_ID, data)
-
-def control_speedometer(kph):
-    data = [kph // 256, kph % 256]  # High byte, low byte for speed
-    send_can_message(SPEEDOMETER_CAN_ID, data)
+def control_tachometer_and_speedometer(rpm, kph):
+    #logic to convert the RPM and KPH to Hex CAN Message Bytes
+    rpm1 = rpm
+    rpm2 = rpm
+    kph1 = kph
+    kph2 = kph
+    data = [rpm1, rpm2, engineSpeedRateOfChange1, engineSpeedRateOfChange2, kph1, kph2, throttlePositionManifold, throttlePositionRateOfChange]  # High byte, low byte for RPM
+    send_can_message(powertrainControlModule0, data)
 
 def control_temp_gauge(degrees):
     data = [degrees]  # High byte, low byte for speed
-    send_can_message(COOLANT_TEMP_CAN_ID, data)
+    send_can_message(powertrainControlModule01, data)
 
 def main(): 
     # Main loop to capture and process UDP telemetry data
     try:
         while True:
+            # Create a fake high speed CAN to keep the cluster happy
+            allIsWellOnTheCanBus()
             data, addr = sock.recvfrom(1024)  # Buffer size of 1024 bytes
             # Unpack data (the structure and offsets depend on the game's telemetry format)
             # Example for a custom format (you'll need to adjust this based on your game):
             # RPM and speed might be at different offsets, adjust according to your game's format
-            ENGINE_RPM = struct.unpack('f', data[8:12])[0]  # Example: RPM at bytes 8-12
-            VEHICLE_SPEED = struct.unpack('f', data[12:16])[0]  # Example: Speed at bytes 12-16
-            print(f"Engine RPM: {rpm}, Vehicle Speed: {speed}, Engine Temp: COOLANT_TEMPERATURE" )
-            # Send RPM and speed to the CAN bus
-            control_tachometer(int(ENGINE_RPM))
-            control_speedometer(int(VEHICLE_SPEED))
-            control_temp_gauge(int(COOLANT_TEMPERATURE))
+            engineRevolutionsPerMinute = struct.unpack('f', data[8:12])[0]  # Example: RPM at bytes 8-12
+            vehicleKilometresPerHour = struct.unpack('f', data[12:16])[0]  # Example: Speed at bytes 12-16
+            print(f"Engine RPM: {rpm}, Vehicle Speed: {speed}, Engine Temp: cylinderHeadTemperature" )
+            # Send RPM and speed to the high speed bus
+            control_tachometer_and_speedometer(int(engineRevolutionsPerMinute), int (vehicleKilometresPerHour))
+            control_temp_gauge(int(cylinderHeadTemperature))
             # Optional delay
             time.sleep(0.005)
 
