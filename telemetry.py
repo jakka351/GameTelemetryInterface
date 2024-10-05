@@ -67,20 +67,6 @@ import time
 import queue
 from threading import Thread
 import sys, traceback
-print('                                  I??+=++=~~~~~~~~~~~?I777IIII??++====~======????+==+==~~~~:::::::::~~~~~~~~~====+==I,     ')
-print('                                   ?I+=~~=++~~~~~~~~=?=:+IIIII??++++===~:~~~~~~~=???=?:=~~~~~::::::::~~~~~~~~~~=~=+?7~:    ')
-print('                                    ?+=~~~~=++~~~~~+???~=?7II??+++++++==~~:~~~~~~:~~???=+:~~~~~~:::::::::~~~~=++:,.,+=,,   ')
-print('                                     =?I+~~~==++~~:+??~====+I?+===+++++==~~~::::::::::~????~~~~~:::::~:~==+:,,,,?..::+=:   ')
-print('                                       =?I=~~~==++=+++~==:,~~=+====+++++:,,...:,::~:::::~~~~+~:~~:~~==,.,,.?I~,..::~~=,:   ')
-print('                                        ~=+I?=~~=~+++~~=...,~:=+====++?:~+=?I~,I=I??..~III7I:==~,.,,.,,.,,,...::~~++~:~:   ')
-print('                                           ~?I+=~~~~+~~~.:+,,,:=+===+++~+==~=+:III=?I?77777I~~~===,,,,.,.,,~~~~=+=~::,,:   ')
-print('                                             ~?I+=:~~~~~~,,+:,,+==~+++++,:~~:==,??,:,,=??I++,,,:~===,,,::~~=++=:::~=..,,   ')
-print('                                          ,,,,:=+?==~~~~.=:~~,..,=+++++=~:=+=~:.,:,,,,::?=I=:::::+~====++++=~:::?I+?,..,   ')
-print('                                           :,,,,~+====~:,,,:=,.,,,~~===~~~,:==~~~~~~:..,,,,,,..,,,~==+++~:,~++I++II?...    ')
-print('                                            :,,,,,,+==+,:..:==.:,,~:~~~~~:,,,,:~~~~~~~~=========~++++~,....II+II+?...,:    ')
-print('                                              ,,,,,,,++.,,.,,,,=:,,~:::~:::,,,,,,,,,::~~~=====~====~.......?I=I.....,:~    ')
-print(' Game Telemetry Interface by Jakka351           ::,,,,,,:~::,~+I+,..~::::::,,,,,,,,,,,,,,,,,~==~~~.........+.......,:,,    ')        
-
 # data byte variables
 engineRevolutionsPerMinute = 0
 vehicleKilometresPerHour = 0
@@ -139,7 +125,7 @@ def scroll():
     ██   ███ ███████ ██ ████ ██ █████         ██    █████   ██      █████   ██ ████ ██ █████      ██    ██████    ████      ██ ██ ██  ██    ██    █████   ██████  █████   ███████ ██      █████   
     ██    ██ ██   ██ ██  ██  ██ ██            ██    ██      ██      ██      ██  ██  ██ ██         ██    ██   ██    ██       ██ ██  ██ ██    ██    ██      ██   ██ ██      ██   ██ ██      ██      
      ██████  ██   ██ ██      ██ ███████       ██    ███████ ███████ ███████ ██      ██ ███████    ██    ██   ██    ██       ██ ██   ████    ██    ███████ ██   ██ ██      ██   ██  ██████ ███████                                                                                                                                                                                    
-     ?I+=~~fg+falcon+swc+adapter+??++++===~:~~~~~~~=???=?:=~~~~~::::::::~~~~~~~~~~=~=+?7~:    
+     ?I+=~~fg+falcon+video+game+telemetry+interface+by+Jakka351~~::::::::~~~~~~~~~~=~=+?7~:    
        ?+=~~~~=++~~~~~+???~=?7II??+++++++==~~:~~~~~~:~~???=+:~~~~~~:::::::::~~~~=++:,.,+=,,   
         =?I+~~~==++~~:+??~====+I?+===+++++==~~~::::::::::~????~~~~~:::::~:~==+:,,,,?..::+=:   
           =?I=~~~==++=+++~==:,~~=+====+++++:,,...:,::~:::::~~~~+~:~~:~~==,.,,.?I~,..::~~=,:   
@@ -216,16 +202,51 @@ def send_can_message(can_id, data):
 
 def control_tachometer_and_speedometer(rpm, kph):
     #logic to convert the RPM and KPH to Hex CAN Message Bytes
-    rpm1 = rpm
-    rpm2 = rpm
-    kph1 = kph
-    kph2 = kph
-    data = [rpm1, rpm2, engineSpeedRateOfChange1, engineSpeedRateOfChange2, kph1, kph2, throttlePositionManifold, throttlePositionRateOfChange]  # High byte, low byte for RPM
+    byte0, byte1 = rpm_to_can_bytes(rpm)
+    byte4, byte5 = speed_to_can_bytes(kph)
+    data = [byte0, byte1, engineSpeedRateOfChange1, engineSpeedRateOfChange2, byte4, byte5, throttlePositionManifold, throttlePositionRateOfChange]  # High byte, low byte for RPM
     send_can_message(powertrainControlModule0, data)
 
 def control_temp_gauge(degrees):
     data = [degrees]  # High byte, low byte for speed
     send_can_message(powertrainControlModule01, data)
+
+def speed_to_can_bytes(speed_kph):
+    """
+    Convert vehicle speed in KPH to two CAN data bytes (0-512 KPH).
+    The speed is divided by 128 as required, and the result is placed in bytes 4 and 5.
+    The resulting two bytes will represent the speed in the format:
+    - Byte 4: MSB (most significant byte)
+    - Byte 5: LSB (least significant byte)
+    :param speed_kph: Vehicle speed in kilometers per hour (KPH).
+    :return: Two data bytes as a tuple (byte4, byte5)
+    """
+    if not (0 <= speed_kph <= 512 * 128):
+        raise ValueError("Speed must be in the range 0-65536 KPH")
+    # Divide the speed by 128 as per the requirement
+    adjusted_speed = int(speed_kph / 128)
+    # Convert the adjusted speed to two bytes
+    byte4 = (adjusted_speed >> 8) & 0xFF  # Extract the MSB (high byte)
+    byte5 = adjusted_speed & 0xFF          # Extract the LSB (low byte)
+    return byte4, byte5
+
+def rpm_to_can_bytes(rpm):
+    """
+    Convert RPM to two CAN data bytes (0-6500 RPM).
+    The resulting two bytes will represent RPM in the format:
+    - Byte 0: MSB (most significant byte)
+    - Byte 1: LSB (least significant byte)
+    :param rpm: Engine RPM as a decimal number (0-6500)
+    :return: Two data bytes as a tuple (byte0, byte1)
+    """
+    if not (0 <= rpm <= 6500):
+        raise ValueError("RPM must be in the range 0-6500")
+    # Convert RPM to its hexadecimal representation in two bytes
+    rpm_hex = int(rpm)
+    byte0 = (rpm_hex >> 8) & 0xFF  # Extract the MSB (high byte)
+    byte1 = rpm_hex & 0xFF         # Extract the LSB (low byte)
+    return byte0, byte1
+
 
 def main(): 
     # Main loop to capture and process UDP telemetry data
