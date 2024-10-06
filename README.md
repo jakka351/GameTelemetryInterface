@@ -9,8 +9,10 @@ Driving an FG Falcon Instrument Cluster with Video Game Telemetry. Basic set up 
 ##
 
 # Obtaining Telemetry
+Handshake with the AC Servere to provide identifiers, followed by subscribing to telemtery updates.
 
 # CAN Interface
+Raspbery Pi 4 with a PiCAN Dual CAN hat.
 
 # Simulator
 ![image](https://github.com/user-attachments/assets/793c572d-3482-41c1-83b1-e0e08f803cd5)
