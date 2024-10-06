@@ -60,13 +60,18 @@
 #
 #//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #endregion License
+import ctypes
 import socket
 import struct
 import can
 import time
 import queue
+import thraeding
 from threading import Thread
 import sys, traceback
+# we want this lib installed on the RPI as well -  pip install acudpclient
+from acudpclient.client import ACUDPClient
+
 # data byte variables
 engineRevolutionsPerMinute = 0
 vehicleKilometresPerHour = 0
@@ -101,11 +106,135 @@ IC_DiagSig_Rx = 0x720
 IC_DiagSig_Tx = 0x728
 
 # UDP settings (for example, Project CARS telemetry uses UDP port 5606)
-UDP_IP = "0.0.0.0"
-UDP_PORT = 5606
-# Set up UDP socket
+# AC server IP and port
+AC_SERVER_IP = '127.0.0.1'  # Replace with the actual IP if needed
+AC_SERVER_PORT = 9996
+
+# Create a UDP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.bind((UDP_IP, UDP_PORT))
+sock.settimeout(5)  # Set a timeout for blocking socket operations
+
+# Struct formats
+handshake_format = '<iii'  # Little-endian, 3 integers
+handshake_response_format = '<50s50sii50s50s'  # Little-endian, specified types
+# Define the RTCarInfo struct using ctypes
+class RTCarInfo(ctypes.Structure):
+    _fields_ = [
+        ('identifier', ctypes.c_char),
+        ('size', ctypes.c_int),
+        ('speed_Kmh', ctypes.c_float),
+        ('speed_Mph', ctypes.c_float),
+        ('speed_Ms', ctypes.c_float),
+        ('isAbsEnabled', ctypes.c_bool),
+        ('isAbsInAction', ctypes.c_bool),
+        ('isTcInAction', ctypes.c_bool),
+        ('isTcEnabled', ctypes.c_bool),
+        ('isInPit', ctypes.c_bool),
+        ('isEngineLimiterOn', ctypes.c_bool),
+        ('accG_vertical', ctypes.c_float),
+        ('accG_horizontal', ctypes.c_float),
+        ('accG_frontal', ctypes.c_float),
+        ('lapTime', ctypes.c_int),
+        ('lastLap', ctypes.c_int),
+        ('bestLap', ctypes.c_int),
+        ('lapCount', ctypes.c_int),
+        ('gas', ctypes.c_float),
+        ('brake', ctypes.c_float),
+        ('clutch', ctypes.c_float),
+        ('engineRPM', ctypes.c_float),
+        ('steer', ctypes.c_float),
+        ('gear', ctypes.c_int),
+        ('cgHeight', ctypes.c_float),
+        ('wheelAngularSpeed', ctypes.c_float * 4),
+        ('slipAngle', ctypes.c_float * 4),
+        ('slipAngle_ContactPatch', ctypes.c_float * 4),
+        ('slipRatio', ctypes.c_float * 4),
+        ('tyreSlip', ctypes.c_float * 4),
+        ('ndSlip', ctypes.c_float * 4),
+        ('load', ctypes.c_float * 4),
+        ('Dy', ctypes.c_float * 4),
+        ('Mz', ctypes.c_float * 4),
+        ('tyreDirtyLevel', ctypes.c_float * 4),
+        ('camberRAD', ctypes.c_float * 4),
+        ('tyreRadius', ctypes.c_float * 4),
+        ('tyreLoadedRadius', ctypes.c_float * 4),
+        ('suspensionHeight', ctypes.c_float * 4),
+        ('carPositionNormalized', ctypes.c_float),
+        ('carSlope', ctypes.c_float),
+        ('carCoordinates', ctypes.c_float * 3)
+    ]
+
+def send_handshake():
+    identifier = 1  # As per documentation
+    version = 1     # As per documentation
+    operation_id = 0  # HANDSHAKE operation
+
+    handshake_data = struct.pack(handshake_format, identifier, version, operation_id)
+    sock.sendto(handshake_data, (AC_SERVER_IP, AC_SERVER_PORT))
+    print('Handshake request sent.')
+
+def receive_handshake_response():
+    try:
+        data, addr = sock.recvfrom(4096)  # Buffer size of 4096 bytes
+        response = struct.unpack(handshake_response_format, data)
+
+        car_name = response[0].decode('utf-8').rstrip('\x00')
+        driver_name = response[1].decode('utf-8').rstrip('\x00')
+        identifier = response[2]
+        version = response[3]
+        track_name = response[4].decode('utf-8').rstrip('\x00')
+        track_config = response[5].decode('utf-8').rstrip('\x00')
+
+        print('Handshake response received:')
+        print(f'Car Name: {car_name}')
+        print(f'Driver Name: {driver_name}')
+        print(f'Identifier: {identifier}')
+        print(f'Version: {version}')
+        print(f'Track Name: {track_name}')
+        print(f'Track Config: {track_config}')
+
+    except socket.timeout:
+        print('Timeout waiting for handshake response.')
+        return False
+
+    return True
+
+def subscribe_to_updates():
+    identifier = 1  # As per documentation
+    version = 1     # As per documentation
+    operation_id = 1  # SUBSCRIBE_UPDATE operation
+
+    subscribe_data = struct.pack(handshake_format, identifier, version, operation_id)
+    sock.sendto(subscribe_data, (AC_SERVER_IP, AC_SERVER_PORT))
+    print('Subscribed to telemetry updates.')
+
+def receive_telemetry_data():
+    try:
+        while True:
+            data, addr = sock.recvfrom(2048)  # Adjust buffer size if needed
+            if data:
+                identifier = data[0:1].decode('utf-8')
+                if identifier == 'a':
+                    # Parse RTCarInfo
+                    rt_car_info = RTCarInfo.from_buffer_copy(data)
+                    # Access the telemetry data
+                    print(f"Speed (Km/h): {rt_car_info.speed_Kmh}")
+                    print(f"RPM: {rt_car_info.engineRPM}")
+                    print(f"Gear: {rt_car_info.gear}")
+                    print(f"Lap Time: {rt_car_info.lapTime}")
+                    # You can add more fields to display as needed
+    except Exception as e:
+        print(f'Error receiving telemetry data: {e}')
+
+def send_dismiss():
+    identifier = 1  # As per documentation
+    version = 1     # As per documentation
+    operation_id = 3  # DISMISS operation
+
+    dismiss_data = struct.pack(handshake_format, identifier, version, operation_id)
+    sock.sendto(dismiss_data, (AC_SERVER_IP, AC_SERVER_PORT))
+    print('Sent dismiss message.')
+
 
 def scroll():
     #prints logo to console
@@ -138,6 +267,15 @@ def scroll():
                  ,,,,,,,++.,,.,,,,=:,,~:::~:::,,,,,,,,,::~~~=====~====~.......?I=I.....,:~    
                    ::,,,,,,:~::,~+I+,..~::::::,,,,,,,,,,,,,,,,,~==~~~.........+.......,:,,    ''')
         
+def getTelemetryEvents():
+    client = ACUDPClient(port=10000, remote_port=10001)
+    client.listen()
+    client.get_session_info()
+    while True:
+        event = client.get_next_event(call_subscribers=False)
+        return event
+
+
 def setup():
     global bus
  #   os.system("sudo modprobe uinput") 
@@ -249,9 +387,19 @@ def rpm_to_can_bytes(rpm):
 
 def main(): 
     # Main loop to capture and process UDP telemetry data
+    send_handshake()
+    if receive_handshake_response():
+        subscribe_to_updates()
+        # Start receiving telemetry data in a separate thread
+        telemetry_thread = threading.Thread(target=receive_telemetry_data)
+        telemetry_thread.daemon = True
+        telemetry_thread.start()
+        
     try:
         while True:
             # Create a fake high speed CAN to keep the cluster happy
+            getTelemetryEvents()
+            print(event)
             allIsWellOnTheCanBus()
             data, addr = sock.recvfrom(1024)  # Buffer size of 1024 bytes
             # Unpack data (the structure and offsets depend on the game's telemetry format)
