@@ -70,7 +70,7 @@ import thraeding
 from threading import Thread
 import sys, traceback
 # we want this lib installed on the RPI as well -  pip install acudpclient
-from acudpclient.client import ACUDPClient
+#from acudpclient.client import ACUDPClient
 
 # data byte variables
 engineRevolutionsPerMinute = 0
@@ -104,16 +104,14 @@ powertrainControlModule7 = 0x640
 powertrainControlModule8 = 0x650
 IC_DiagSig_Rx = 0x720
 IC_DiagSig_Tx = 0x728
-
-# UDP settings (for example, Project CARS telemetry uses UDP port 5606)
+# AC Telemetry Documentation
+# https://docs.google.com/document/d/1KfkZiIluXZ6mMhLWfDX1qAGbvhGRC3ZUzjVIt5FQpp4/pub
 # AC server IP and port
 AC_SERVER_IP = '127.0.0.1'  # Replace with the actual IP if needed
 AC_SERVER_PORT = 9996
-
 # Create a UDP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.settimeout(5)  # Set a timeout for blocking socket operations
-
 # Struct formats
 handshake_format = '<iii'  # Little-endian, 3 integers
 handshake_response_format = '<50s50sii50s50s'  # Little-endian, specified types
@@ -168,7 +166,6 @@ def send_handshake():
     identifier = 1  # As per documentation
     version = 1     # As per documentation
     operation_id = 0  # HANDSHAKE operation
-
     handshake_data = struct.pack(handshake_format, identifier, version, operation_id)
     sock.sendto(handshake_data, (AC_SERVER_IP, AC_SERVER_PORT))
     print('Handshake request sent.')
@@ -177,14 +174,12 @@ def receive_handshake_response():
     try:
         data, addr = sock.recvfrom(4096)  # Buffer size of 4096 bytes
         response = struct.unpack(handshake_response_format, data)
-
         car_name = response[0].decode('utf-8').rstrip('\x00')
         driver_name = response[1].decode('utf-8').rstrip('\x00')
         identifier = response[2]
         version = response[3]
         track_name = response[4].decode('utf-8').rstrip('\x00')
         track_config = response[5].decode('utf-8').rstrip('\x00')
-
         print('Handshake response received:')
         print(f'Car Name: {car_name}')
         print(f'Driver Name: {driver_name}')
@@ -192,25 +187,32 @@ def receive_handshake_response():
         print(f'Version: {version}')
         print(f'Track Name: {track_name}')
         print(f'Track Config: {track_config}')
-
+        send_scrolling_text('Handshake response received:')
+        send_scrolling_text(f'Car Name: {car_name}')
+        send_scrolling_text(f'Driver Name: {driver_name}')
+        send_scrolling_text(f'Identifier: {identifier}')
+        send_scrolling_text(f'Version: {version}')
+        send_scrolling_text(f'Track Name: {track_name}')
+        send_scrolling_text(f'Track Config: {track_config}')
     except socket.timeout:
         print('Timeout waiting for handshake response.')
         return False
-
     return True
 
 def subscribe_to_updates():
     identifier = 1  # As per documentation
     version = 1     # As per documentation
     operation_id = 1  # SUBSCRIBE_UPDATE operation
-
     subscribe_data = struct.pack(handshake_format, identifier, version, operation_id)
     sock.sendto(subscribe_data, (AC_SERVER_IP, AC_SERVER_PORT))
     print('Subscribed to telemetry updates.')
+    send_scrolling_text('Subscribed to telemetry updates.')
 
 def receive_telemetry_data():
+    global bus1, bus2
     try:
         while True:
+            allIsWellOnTheCanBus()
             data, addr = sock.recvfrom(2048)  # Adjust buffer size if needed
             if data:
                 identifier = data[0:1].decode('utf-8')
@@ -222,6 +224,12 @@ def receive_telemetry_data():
                     print(f"RPM: {rt_car_info.engineRPM}")
                     print(f"Gear: {rt_car_info.gear}")
                     print(f"Lap Time: {rt_car_info.lapTime}")
+                    control_tachometer_and_speedometer(int({rt_car_info.engineRPM}), int ({rt_car_info.speed_Kmh}))
+                    #ontrol_temp_gauge(int(cylinderHeadTemperature))
+                    send_scrolling_text(f"Speed (Km/h): {rt_car_info.speed_Kmh}")
+                    send_scrolling_text(f"RPM: {rt_car_info.engineRPM}")
+                    send_scrolling_text(f"Gear: {rt_car_info.gear}")
+                    send_scrolling_text(f"Lap Time: {rt_car_info.lapTime}")
                     # You can add more fields to display as needed
     except Exception as e:
         print(f'Error receiving telemetry data: {e}')
@@ -230,11 +238,9 @@ def send_dismiss():
     identifier = 1  # As per documentation
     version = 1     # As per documentation
     operation_id = 3  # DISMISS operation
-
     dismiss_data = struct.pack(handshake_format, identifier, version, operation_id)
     sock.sendto(dismiss_data, (AC_SERVER_IP, AC_SERVER_PORT))
     print('Sent dismiss message.')
-
 
 def scroll():
     #prints logo to console
@@ -267,18 +273,8 @@ def scroll():
                  ,,,,,,,++.,,.,,,,=:,,~:::~:::,,,,,,,,,::~~~=====~====~.......?I=I.....,:~    
                    ::,,,,,,:~::,~+I+,..~::::::,,,,,,,,,,,,,,,,,~==~~~.........+.......,:,,    ''')
         
-def getTelemetryEvents():
-    client = ACUDPClient(port=10000, remote_port=10001)
-    client.listen()
-    client.get_session_info()
-    while True:
-        event = client.get_next_event(call_subscribers=False)
-        return event
-
-
 def setup():
-    global bus
- #   os.system("sudo modprobe uinput") 
+    global bus1, bus2
     try:
         bus1 = can.interface.Bus(channel='can0', bustype='socketcan_native')
         bus2 = can.interface.Bus(channel='can1', bustype='socketcan_native')
@@ -296,6 +292,7 @@ def cleanscreen():                    # cleans the whole console screen
 
 # CAN messages to keep cluster happy
 def allIsWellOnTheCanBus():
+    global bus1
     msg120 = can.Message(arbitration_id=torqueReductionRequest, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
     bus1.send(msg120)
     msg12D = can.Message(arbitration_id=engineSpeedRateOfChange, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
@@ -330,10 +327,11 @@ def allIsWellOnTheCanBus():
     bus1.send(msg640)
 
 def send_can_message(can_id, data):
+    global bus1
     data = data + [0] * (8 - len(data))
     message = can.Message(arbitration_id=can_id, data=data, is_extended_id=False)
     try:
-        bus.send(message)
+        bus1.send(message)
         print(f"Message sent on {can_interface}: ID={hex(can_id)} Data={data}")
     except can.CanError:
         print(f"Failed to send message on {can_interface}")
@@ -385,6 +383,61 @@ def rpm_to_can_bytes(rpm):
     byte1 = rpm_hex & 0xFF         # Extract the LSB (low byte)
     return byte0, byte1
 
+def send_scrolling_text(text):
+    """
+    :param text: The text string to display on FDIM as scrolling text
+    """
+    global bus2
+    """#!/bin/bash
+        while true; do;
+         cansend can0 2F5#10264a616b6b6133 
+         cansend can0 2F5#21353120736e6966 
+         cansend can0 2F5#2266696e67207468 
+         cansend can0 2F5#2365206275747473 
+        done"""
+    # Convert the text to hexadecimal ASCII representation
+    hex_data = text.encode('ascii').hex().upper()
+    # Calculate the total data length in bytes
+    total_data_length = len(hex_data) // 2  # Each byte is represented by two hex characters
+    # Prepare the data frames according to ISO-TP protocol
+    frames = []
+    if total_data_length <= 6:
+        # Single Frame (SF)
+        pci = '{:02X}'.format(0x00 | total_data_length)
+        data = pci + hex_data
+        frames.append(data)
+    else:
+        # First Frame (FF)
+        total_length = total_data_length
+        pci = '{:02X}{:02X}'.format(0x10 | ((total_length >> 8) & 0x0F), total_length & 0xFF)
+        data = pci + hex_data[:(6 * 2)]
+        frames.append(data)
+        hex_data = hex_data[(6 * 2):]
+
+        # Consecutive Frames (CF)
+        sn = 1  # Sequence number starts at 1 and cycles from 0 to 15
+        while hex_data:
+            pci = '{:02X}'.format(0x20 | (sn & 0x0F))
+            frame_data = pci + hex_data[:(7 * 2)]
+            frames.append(frame_data)
+            hex_data = hex_data[(7 * 2):]
+            sn = (sn + 1) % 16  # Sequence number cycles from 0 to 15
+    # Send the frames over CAN bus
+    for frame in frames:
+        # Pad the data to 8 bytes (16 hex characters)
+        frame_padded = frame.ljust(16, '0')
+        # Convert the hex string to bytes
+        data_bytes = bytes.fromhex(frame_padded)
+        # Create a CAN message
+        message = can.Message(arbitration_id=0x2F5, data=data_bytes, is_extended_id=False)
+        try:
+            bus2.send(message)
+            print(f"Sent: ID=0x{can_id:X}, Data={frame_padded}")
+        except can.CanError as e:
+            print(f"Failed to send message: {e}")
+        time.sleep(0.01)  # Small delay between frames
+
+
 def main(): 
     # Main loop to capture and process UDP telemetry data
     send_handshake()
@@ -394,30 +447,6 @@ def main():
         telemetry_thread = threading.Thread(target=receive_telemetry_data)
         telemetry_thread.daemon = True
         telemetry_thread.start()
-        
-    try:
-        while True:
-            # Create a fake high speed CAN to keep the cluster happy
-            getTelemetryEvents()
-            print(event)
-            allIsWellOnTheCanBus()
-            data, addr = sock.recvfrom(1024)  # Buffer size of 1024 bytes
-            # Unpack data (the structure and offsets depend on the game's telemetry format)
-            # Example for a custom format (you'll need to adjust this based on your game):
-            # RPM and speed might be at different offsets, adjust according to your game's format
-            engineRevolutionsPerMinute = struct.unpack('f', data[8:12])[0]  # Example: RPM at bytes 8-12
-            vehicleKilometresPerHour = struct.unpack('f', data[12:16])[0]  # Example: Speed at bytes 12-16
-            print(f"Engine RPM: {rpm}, Vehicle Speed: {speed}, Engine Temp: cylinderHeadTemperature" )
-            # Send RPM and speed to the high speed bus
-            control_tachometer_and_speedometer(int(engineRevolutionsPerMinute), int (vehicleKilometresPerHour))
-            control_temp_gauge(int(cylinderHeadTemperature))
-            # Optional delay
-            time.sleep(0.005)
-
-    except KeyboardInterrupt:
-
-        print("Keyboard Interupt, Exiting...")
-        sock.close()
 
 if __name__ == "__main__":
     cleanscreen()                                                # clean the console screen
