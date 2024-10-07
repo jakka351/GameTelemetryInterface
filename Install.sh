@@ -52,4 +52,13 @@ User=pi
 [Install]
 WantedBy=multi-user.target"
 
-echo 
+echo "appending config.txt with mcp2515 enablers"
+sudo echo "
+# Enable SPI (required for MCP2515 CAN controllers)
+dtparam=spi=on
+# CAN interface configuration for MCP2515 on can0 and can1
+# Configuration for can0 (MCP2515) on SPI0 CE0 (Chip Enable 0)
+dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=25,spimaxfrequency=1000000
+# Configuration for can1 (MCP2515) on SPI0 CE1 (Chip Enable 1)
+dtoverlay=mcp2515-can1,oscillator=16000000,interrupt=24,spimaxfrequency=1000000" | sudo tee -a /boot/config txt
+
