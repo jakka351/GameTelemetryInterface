@@ -9,10 +9,10 @@ Driving an FG Falcon Instrument Cluster with Video Game Telemetry. Basic set up 
 ##
 
 # Obtaining Telemetry
-Handshake with the AC Servere to provide identifiers, followed by subscribing to telemtery updates.
+Using UDP, a python script is able to Handshake with the AC Servere to provide it identifiers, followed by subscribing to telemtery updates. The telemetry data can then be recieved in python and manipulated as necessary to data bytes for a CAN message.
 
 # CAN Interface
-Raspbery Pi 4 with a PiCAN Dual CAN hat.
+Raspbery Pi 4 with a PiCAN Dual CAN hat. The pi is setup with socketcan which provides CANbus on can0 and can1 as network interfaces. The script then uses the python-CAN library to interface with socketcan and provide CAN comms.
 
 # Simulator
 ![image](https://github.com/user-attachments/assets/793c572d-3482-41c1-83b1-e0e08f803cd5)
