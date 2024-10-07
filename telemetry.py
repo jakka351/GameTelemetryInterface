@@ -209,7 +209,7 @@ def subscribe_to_updates():
     send_scrolling_text('Subscribed to telemetry updates.')
 
 def receive_telemetry_data():
-    global bus1, bus2
+    global highSpeedCan, MidSpeedCan
     try:
         while True:
             allIsWellOnTheCanBus()
@@ -274,14 +274,26 @@ def scroll():
                    ::,,,,,,:~::,~+I+,..~::::::,,,,,,,,,,,,,,,,,~==~~~.........+.......,:,,    ''')
         
 def setup():
-    global bus1, bus2
+    global highSpeedCan, MidSpeedCan
     try:
-        bus1 = can.interface.Bus(channel='can0', bustype='socketcan_native')
-        bus2 = can.interface.Bus(channel='can1', bustype='socketcan_native')
+        highSpeedCan = can.interface.Bus(channel='can0', bustype='socketcan_native')
+        MidSpeedCan = can.interface.Bus(channel='can1', bustype='socketcan_native')
+        # Light Up Cluster on Startup
+        MidSpeedCan.send(can.Message(arbitration_id=720, data=[0x02, 0x10, 0x87, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False))
+        MidSpeedCan.send(can.Message(arbitration_id=720, data=[0x05, 0x2F, 0x99, 0x59, 0x07, 0xFF, 0x00, 0x00 ],extended_id=False))
+        MidSpeedCan.send(can.Message(arbitration_id=720, data=[0x05, 0x2F, 0x71, 0x40, 0x07, 0xFF, 0x00, 0x00 ],extended_id=False))
+        MidSpeedCan.send(can.Message(arbitration_id=720, data=[0x05, 0x2F, 0x71, 0x40, 0x07, 0x00, 0x00, 0x00 ],extended_id=False))
+        MidSpeedCan.send(can.Message(arbitration_id=720, data=[0x06, 0x2F, 0x61, 0x97, 0x06, 0x10, 0xF0, 0x00 ],extended_id=False))
+        """
+        byte[] ipcStartUp = new byte[] { 0, 0, ecuRxIdentifier1, ecuRxIdentifier2, 0x2F, 0x99, 0x59, 0x07, 0xFF}; sendPassThruMsg(ipcStartUp);
+        byte[] ipcStartUp2 = new byte[] { 0, 0, ecuRxIdentifier1, ecuRxIdentifier2, 0x2F, 0x71, 0x40, 0x07, 0xFF}; sendPassThruMsg(ipcStartUp2);
+        byte[] ipcStartUp3 = new byte[] { 0, 0, ecuRxIdentifier1 , ecuRxIdentifier2, 0x2F, 0x71, 0x40, 0x07, 0x00}; sendPassThruMsg(ipcStartUp3);
+        byte[] ipcStartUp4 = new byte[] { 0, 0, ecuRxIdentifier1 , ecuRxIdentifier2, 0x2F, 0x61, 0x97, 0x06, 0x10, 0xF0}; sendPassThruMsg(ipcStartUp4);
+        """
     except OSError:
         sys.exit() # quits if there is no canbus interface
     print("                      ")
-    print("        CANbus active on", bus1, bus2)   
+    print("        CANbus active on", highSpeedCan, MidSpeedCan)   
     
 def cleanline():                      # cleans the last output line from the console
     sys.stdout.write('\x1b[1A')
@@ -292,46 +304,46 @@ def cleanscreen():                    # cleans the whole console screen
 
 # CAN messages to keep cluster happy
 def allIsWellOnTheCanBus():
-    global bus1
+    global highSpeedCan
     msg120 = can.Message(arbitration_id=torqueReductionRequest, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    bus1.send(msg120)
+    highSpeedCan.send(msg120)
     msg12D = can.Message(arbitration_id=engineSpeedRateOfChange, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    bus1.send(msg12D)
+    highSpeedCan.send(msg12D)
     msg210 = can.Message(arbitration_id=antiLockBrakeSystem, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    bus1.send(msg210)
+    highSpeedCan.send(msg210)
     msg340 = can.Message(arbitration_id=restraintsControlModule, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    bus1.send(msg340)
+    highSpeedCan.send(msg340)
     msg350 = can.Message(arbitration_id=restraintsControlModule2, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    bus1.send(msg350)
+    highSpeedCan.send(msg350)
     msg353 = can.Message(arbitration_id=hvacIntegratedModule, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    bus1.send(msg353)
+    highSpeedCan.send(msg353)
     msg403 = can.Message(arbitration_id=bodyElectronicModule, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    bus1.send(msg403)
+    highSpeedCan.send(msg403)
     msg425 = can.Message(arbitration_id=powertrainControlModule, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    bus1.send(msg425)
+    highSpeedCan.send(msg425)
     msg427 = can.Message(arbitration_id=powertrainControlModule2, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    bus1.send(msg427)
+    highSpeedCan.send(msg427)
     msg437 = can.Message(arbitration_id=instrumentCluster, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    bus1.send(msg437)
+    highSpeedCan.send(msg437)
     msg453 = can.Message(arbitration_id=powertrainControlModule3, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    bus1.send(msg453)
+    highSpeedCan.send(msg453)
     msg454 = can.Message(arbitration_id=powertrainControlModule4, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    bus1.send(msg454)
+    highSpeedCan.send(msg454)
     msg4C0 = can.Message(arbitration_id=powertrainControlModule5, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    bus1.send(msg4C0)
+    highSpeedCan.send(msg4C0)
     msg623 = can.Message(arbitration_id=powertrainControlModule6, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    bus1.send(msg623)
+    highSpeedCan.send(msg623)
     msg640 = can.Message(arbitration_id=powertrainControlModule7, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    bus1.send(msg640)
+    highSpeedCan.send(msg640)
     msg650 = can.Message(arbitration_id=powertrainControlModule8, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    bus1.send(msg640)
+    highSpeedCan.send(msg640)
 
 def send_can_message(can_id, data):
-    global bus1
+    global highSpeedCan
     data = data + [0] * (8 - len(data))
     message = can.Message(arbitration_id=can_id, data=data, is_extended_id=False)
     try:
-        bus1.send(message)
+        highSpeedCan.send(message)
         print(f"Message sent on {can_interface}: ID={hex(can_id)} Data={data}")
     except can.CanError:
         print(f"Failed to send message on {can_interface}")
@@ -383,11 +395,54 @@ def rpm_to_can_bytes(rpm):
     byte1 = rpm_hex & 0xFF         # Extract the LSB (low byte)
     return byte0, byte1
 
+def send_big_text(text):
+    # Convert the text to hexadecimal ASCII representation
+    hex_data = text.encode('ascii').hex().upper()
+    # Calculate the total data length in bytes
+    total_data_length = len(hex_data) // 2  # Each byte is represented by two hex characters
+    # Prepare the data frames according to ISO-TP protocol
+    frames = []
+    if total_data_length <= 6:
+        # Single Frame (SF)
+        pci = '{:02X}'.format(0x00 | total_data_length)
+        data = pci + hex_data
+        frames.append(data)
+    else:
+        # First Frame (FF)
+        total_length = total_data_length
+        pci = '{:02X}{:02X}'.format(0x10 | ((total_length >> 8) & 0x0F), total_length & 0xFF)
+        data = pci + hex_data[:(6 * 2)]
+        frames.append(data)
+        hex_data = hex_data[(6 * 2):]
+
+        # Consecutive Frames (CF)
+        sn = 1  # Sequence number starts at 1 and cycles from 0 to 15
+        while hex_data:
+            pci = '{:02X}'.format(0x20 | (sn & 0x0F))
+            frame_data = pci + hex_data[:(7 * 2)]
+            frames.append(frame_data)
+            hex_data = hex_data[(7 * 2):]
+            sn = (sn + 1) % 16  # Sequence number cycles from 0 to 15
+    # Send the frames over CAN bus
+    for frame in frames:
+        # Pad the data to 8 bytes (16 hex characters)
+        frame_padded = frame.ljust(16, '0')
+        # Convert the hex string to bytes
+        data_bytes = bytes.fromhex(frame_padded)
+        # Create a CAN message
+        message = can.Message(arbitration_id=0x309, data=data_bytes, is_extended_id=False)
+        try:
+            MidSpeedCan.send(message)
+            print(f"Sent: ID=0x{can_id:X}, Data={frame_padded}")
+        except can.CanError as e:
+            print(f"Failed to send message: {e}")
+        time.sleep(0.01)  # Small delay between frames
+
 def send_scrolling_text(text):
     """
     :param text: The text string to display on FDIM as scrolling text
     """
-    global bus2
+    global MidSpeedCan
     """#!/bin/bash
         while true; do;
          cansend can0 2F5#10264a616b6b6133 
@@ -431,12 +486,11 @@ def send_scrolling_text(text):
         # Create a CAN message
         message = can.Message(arbitration_id=0x2F5, data=data_bytes, is_extended_id=False)
         try:
-            bus2.send(message)
+            MidSpeedCan.send(message)
             print(f"Sent: ID=0x{can_id:X}, Data={frame_padded}")
         except can.CanError as e:
             print(f"Failed to send message: {e}")
         time.sleep(0.01)  # Small delay between frames
-
 
 def main(): 
     # Main loop to capture and process UDP telemetry data
