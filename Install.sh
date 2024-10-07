@@ -52,6 +52,9 @@ sudo ip link set can1 type can bitrate 125000
 sudo ip link set can0 up
 sudo ip link set can1 up" >> /usr/local/bin/setup_can.sh
 
+echo "making setup_can.sh script executable allowed"
+sudo chmod +x /usr/local/bin/setup_can.sh
+
 echo "creating socketcan service"
 sudo echo "
 [Unit]
@@ -92,4 +95,6 @@ dtparam=spi=on
 dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=25,spimaxfrequency=1000000
 # Configuration for can1 (MCP2515) on SPI0 CE1 (Chip Enable 1)
 dtoverlay=mcp2515-can1,oscillator=16000000,interrupt=24,spimaxfrequency=1000000" | sudo tee -a /boot/config txt
-
+echo "install complete, rebooting..."
+sleep 3
+sudo reboot
