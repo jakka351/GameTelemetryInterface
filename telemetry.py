@@ -209,7 +209,7 @@ def subscribe_to_updates():
     send_scrolling_text('Subscribed to telemetry updates.')
 
 def receive_telemetry_data():
-    global highSpeedCan, MidSpeedCan
+    global HighSpeedCan, MidSpeedCan
     try:
         while True:
             allIsWellOnTheCanBus()
@@ -225,12 +225,18 @@ def receive_telemetry_data():
                     print(f"Gear: {rt_car_info.gear}")
                     print(f"Lap Time: {rt_car_info.lapTime}")
                     control_tachometer_and_speedometer(int({rt_car_info.engineRPM}), int ({rt_car_info.speed_Kmh}))
+                    current_gear_position(byte({rt_car_info.gear})
                     #ontrol_temp_gauge(int(cylinderHeadTemperature))
+                    send_big_text("Speed:")
                     send_scrolling_text(f"Speed (Km/h): {rt_car_info.speed_Kmh}")
+                    send_big_text("RPM:")
                     send_scrolling_text(f"RPM: {rt_car_info.engineRPM}")
+                    send_big_text("Gear:")
                     send_scrolling_text(f"Gear: {rt_car_info.gear}")
+                    send_big_text("Lap Time:")
                     send_scrolling_text(f"Lap Time: {rt_car_info.lapTime}")
                     # You can add more fields to display as needed
+                    
     except Exception as e:
         print(f'Error receiving telemetry data: {e}')
 
@@ -274,9 +280,9 @@ def scroll():
                    ::,,,,,,:~::,~+I+,..~::::::,,,,,,,,,,,,,,,,,~==~~~.........+.......,:,,    ''')
         
 def setup():
-    global highSpeedCan, MidSpeedCan
+    global HighSpeedCan, MidSpeedCan
     try:
-        highSpeedCan = can.interface.Bus(channel='can0', bustype='socketcan_native')
+        HighSpeedCan = can.interface.Bus(channel='can0', bustype='socketcan_native')
         MidSpeedCan = can.interface.Bus(channel='can1', bustype='socketcan_native')
         # Light Up Cluster on Startup
         MidSpeedCan.send(can.Message(arbitration_id=720, data=[0x02, 0x10, 0x87, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False))
@@ -293,7 +299,7 @@ def setup():
     except OSError:
         sys.exit() # quits if there is no canbus interface
     print("                      ")
-    print("        CANbus active on", highSpeedCan, MidSpeedCan)   
+    print("        CANbus active on", HighSpeedCan, MidSpeedCan)   
     
 def cleanline():                      # cleans the last output line from the console
     sys.stdout.write('\x1b[1A')
@@ -304,46 +310,46 @@ def cleanscreen():                    # cleans the whole console screen
 
 # CAN messages to keep cluster happy
 def allIsWellOnTheCanBus():
-    global highSpeedCan
+    global HighSpeedCan
     msg120 = can.Message(arbitration_id=torqueReductionRequest, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    highSpeedCan.send(msg120)
+    HighSpeedCan.send(msg120)
     msg12D = can.Message(arbitration_id=engineSpeedRateOfChange, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    highSpeedCan.send(msg12D)
+    HighSpeedCan.send(msg12D)
     msg210 = can.Message(arbitration_id=antiLockBrakeSystem, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    highSpeedCan.send(msg210)
+    HighSpeedCan.send(msg210)
     msg340 = can.Message(arbitration_id=restraintsControlModule, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    highSpeedCan.send(msg340)
+    HighSpeedCan.send(msg340)
     msg350 = can.Message(arbitration_id=restraintsControlModule2, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    highSpeedCan.send(msg350)
+    HighSpeedCan.send(msg350)
     msg353 = can.Message(arbitration_id=hvacIntegratedModule, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    highSpeedCan.send(msg353)
+    HighSpeedCan.send(msg353)
     msg403 = can.Message(arbitration_id=bodyElectronicModule, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    highSpeedCan.send(msg403)
+    HighSpeedCan.send(msg403)
     msg425 = can.Message(arbitration_id=powertrainControlModule, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    highSpeedCan.send(msg425)
+    HighSpeedCan.send(msg425)
     msg427 = can.Message(arbitration_id=powertrainControlModule2, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    highSpeedCan.send(msg427)
+    HighSpeedCan.send(msg427)
     msg437 = can.Message(arbitration_id=instrumentCluster, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    highSpeedCan.send(msg437)
+    HighSpeedCan.send(msg437)
     msg453 = can.Message(arbitration_id=powertrainControlModule3, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    highSpeedCan.send(msg453)
+    HighSpeedCan.send(msg453)
     msg454 = can.Message(arbitration_id=powertrainControlModule4, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    highSpeedCan.send(msg454)
+    HighSpeedCan.send(msg454)
     msg4C0 = can.Message(arbitration_id=powertrainControlModule5, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    highSpeedCan.send(msg4C0)
+    HighSpeedCan.send(msg4C0)
     msg623 = can.Message(arbitration_id=powertrainControlModule6, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    highSpeedCan.send(msg623)
+    HighSpeedCan.send(msg623)
     msg640 = can.Message(arbitration_id=powertrainControlModule7, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    highSpeedCan.send(msg640)
+    HighSpeedCan.send(msg640)
     msg650 = can.Message(arbitration_id=powertrainControlModule8, data=[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
-    highSpeedCan.send(msg640)
+    HighSpeedCan.send(msg650)
 
 def send_can_message(can_id, data):
-    global highSpeedCan
+    global HighSpeedCan
     data = data + [0] * (8 - len(data))
     message = can.Message(arbitration_id=can_id, data=data, is_extended_id=False)
     try:
-        highSpeedCan.send(message)
+        HighSpeedCan.send(message)
         print(f"Message sent on {can_interface}: ID={hex(can_id)} Data={data}")
     except can.CanError:
         print(f"Failed to send message on {can_interface}")
@@ -394,6 +400,11 @@ def rpm_to_can_bytes(rpm):
     byte0 = (rpm_hex >> 8) & 0xFF  # Extract the MSB (high byte)
     byte1 = rpm_hex & 0xFF         # Extract the LSB (low byte)
     return byte0, byte1
+
+def current_gear_position(actualGearPosition):
+    glboal HighSpeedCan
+    msg230 = can.Message(arbitration_id=0x230, data=[actualGearPosition, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ],extended_id=False)
+    HighSpeedCan.send(msg230)
 
 def send_big_text(text):
     # Convert the text to hexadecimal ASCII representation
