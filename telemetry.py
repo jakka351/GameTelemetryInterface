@@ -225,7 +225,7 @@ def receive_telemetry_data():
                     print(f"Gear: {rt_car_info.gear}")
                     print(f"Lap Time: {rt_car_info.lapTime}")
                     control_tachometer_and_speedometer(int({rt_car_info.engineRPM}), int ({rt_car_info.speed_Kmh}))
-                    current_gear_position(byte({rt_car_info.gear})
+                    current_gear_position(byte({rt_car_info.gear}))
                     #ontrol_temp_gauge(int(cylinderHeadTemperature))
                     send_big_text("Speed:")
                     send_scrolling_text(f"Speed (Km/h): {rt_car_info.speed_Kmh}")
